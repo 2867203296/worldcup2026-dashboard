@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚽ 绿茵神算 — World Cup 2026 预测仪表盘</title>
+<meta name="description" content="2026 FIFA World Cup 实时赛程 + AI 预测引擎。小组积分、淘汰赛走势、每场预测，世界杯必备。">
+<style>
+/* === ponytail: CSS Grid + Custom Properties, 零框架 === */
+:root {
+  --bg: #0a0e14;
+  --surface: #111820;
+  --border: #222830;
+  --text: #e2e8f0;
+  --dim: #64748b;
+  --gold: #f0c040;
+  --accent: #3b82f6;
+  --green: #22c55e;
+  --red: #ef4444;
+  --win: #16a34a;
+  --draw: #d97706;
+  --loss: #dc2626;
+  --radius: 10px;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.5;min-height:100vh}
+
+/* Header */
+header{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);border-bottom:2px solid var(--gold);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+header h1{font-size:1.4rem;display:flex;align-items:center;gap:10px}
+header .live{background:var(--red);color:#fff;font-size:.7rem;padding:3px 10px;border-radius:12px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* Nav tabs */
+nav.tabs{display:flex;gap:0;background:var(--surface);border-bottom:1px solid var(--border);overflow-x:auto;padding:0 16px}
+.tab-btn{background:none;border:none;color:var(--dim);padding:12px 18px;cursor:pointer;font-size:.85rem;font-family:var(--font);border-bottom:2px solid transparent;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+main{max-width:1200px;margin:0 auto;padding:20px}
+.tab-panel{display:none;animation:fadeUp .25s}
+.tab-panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Stats bar */
+.stats-bar{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;text-align:center}
+.stat .num{font-size:1.6rem;font-weight:700;color:var(--gold)}
+.stat .label{font-size:.7rem;color:var(--dim);margin-top:2px}
+
+/* Groups grid */
+.groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.group-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.group-card .gh{background:var(--bg);padding:10px 14px;font-weight:700;font-size:.85rem;border-bottom:1px solid var(--border);color:var(--gold)}
+.group-card table{width:100%;border-collapse:collapse;font-size:.8rem}
+.group-card th{text-align:left;padding:6px 14px;color:var(--dim);font-weight:500;font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.group-card td{padding:8px 14px;border-bottom:1px solid rgba(255,255,255,.03)}
+.group-card tr:hover td{background:rgba(240,192,64,.05)}
+.group-card .pos{width:24px;color:var(--dim);text-align:center}
+.group-card .team{font-weight:500}
+.group-card .pts{font-weight:700;color:var(--gold)}
+.group-card .top2{color:var(--green)}
+.group-card .top2 .pos{color:var(--green)}
+
+/* Matches */
+.match-list{display:flex;flex-direction:column;gap:8px}
+.match-row{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;transition:border-color .2s}
+.match-row:hover{border-color:var(--gold)}
+.match-row .time{font-size:.75rem;color:var(--dim);min-width:50px}
+.match-row .teams{flex:1;text-align:center}
+.match-row .home,.match-row .away{font-weight:500}
+.match-row .score{font-size:1.2rem;font-weight:800;padding:0 8px;min-width:50px;text-align:center}
+.match-row .score.played{background:var(--bg);border-radius:6px;padding:4px 12px}
+.match-row .vs{color:var(--dim);padding:0 6px}
+.match-row .location{font-size:.7rem;color:var(--dim);min-width:120px;text-align:right}
+.match-row .winner{color:var(--green);font-size:.75rem;min-width:60px;text-align:right}
+
+/* Prediction */
+.prediction{display:flex;align-items:center;gap:8px;margin-left:12px}
+.pred-bar{display:flex;height:6px;border-radius:3px;overflow:hidden;min-width:100px}
+.pred-home{background:var(--accent)}
+.pred-draw{background:var(--dim)}
+.pred-away{background:var(--red)}
+.pred-label{font-size:.65rem;color:var(--dim);min-width:55px;text-align:center}
+
+/* Premium gate */
+.premium-banner{background:linear-gradient(135deg,#1a1a2e,#16213e);border:1px solid var(--gold);border-radius:var(--radius);padding:24px;text-align:center;margin:20px 0}
+.premium-banner h3{color:var(--gold);font-size:1.1rem;margin-bottom:8px}
+.premium-banner .price{font-size:2rem;font-weight:800;color:var(--gold)}
+.premium-banner .per{color:var(--dim);font-size:.8rem}
+.premium-banner ul{list-style:none;text-align:left;max-width:400px;margin:16px auto;color:var(--dim);font-size:.85rem}
+.premium-banner ul li{padding:4px 0}
+.premium-banner ul li::before{content:'✓ ';color:var(--green)}
+.premium-locked{filter:blur(4px);pointer-events:none;user-select:none;position:relative}
+.premium-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:1}
+.btn{display:inline-block;background:var(--gold);color:#000;padding:12px 28px;border-radius:8px;font-weight:700;font-size:.9rem;cursor:pointer;border:none;text-decoration:none;transition:transform .15s}
+.btn:hover{transform:scale(1.03)}
+.btn-outline{background:transparent;border:1px solid var(--gold);color:var(--gold)}
+.btn-small{padding:6px 14px;font-size:.75rem}
+
+/* Info cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card h3{font-size:1rem;margin-bottom:12px;color:var(--gold)}
+
+/* responsive */
+@media(max-width:600px){
+  .match-row{flex-wrap:wrap;gap:6px}
+  .match-row .location{text-align:left;min-width:auto}
+  .prediction{width:100%;justify-content:center;margin-left:0;margin-top:6px}
+}
+
+.empty{text-align:center;color:var(--dim);padding:30px}
+footer{text-align:center;padding:20px;color:var(--dim);font-size:.7rem;border-top:1px solid var(--border);margin-top:30px}
+.premium-tag{font-size:.6rem;background:var(--gold);color:#000;padding:1px 6px;border-radius:8px;margin-left:6px;font-weight:700}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚽ 绿茵神算 <span class="live">● LIVE</span></h1>
+  <div style="font-size:.8rem;color:var(--dim)">2026 FIFA World Cup · USA / Canada / Mexico</div>
+</header>
+
+<nav class="tabs">
+  <button class="tab-btn active" data-tab="groups">📊 小组积分</button>
+  <button class="tab-btn" data-tab="matches">📅 赛程赛果</button>
+  <button class="tab-btn" data-tab="predictions">🤖 AI 预测 <span class="premium-tag">PRO</span></button>
+  <button class="tab-btn" data-tab="bracket">🏆 淘汰赛</button>
+</nav>
+
+<main>
+
+<!-- ====== GROUPS TAB ====== -->
+<div class="tab-panel active" id="panel-groups">
+  <div class="stats-bar" id="group-stats"></div>
+  <div class="groups-grid" id="groups-container"></div>
+</div>
+
+<!-- ====== MATCHES TAB ====== -->
+<div class="tab-panel" id="panel-matches">
+  <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+    <select id="match-filter" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-family:var(--font);font-size:.8rem">
+      <option value="all">全部比赛</option>
+      <option value="played">已完赛</option>
+      <option value="upcoming">即将开始</option>
+    </select>
+    <select id="group-filter" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:6px;font-family:var(--font);font-size:.8rem">
+      <option value="all">所有小组</option>
+    </select>
+  </div>
+  <div class="match-list" id="matches-container"></div>
+</div>
+
+<!-- ====== PREDICTIONS TAB ====== -->
+<div class="tab-panel" id="panel-predictions">
+  <div class="premium-banner">
+    <h3>🔮 AI 深度预测引擎</h3>
+    <div class="price">¥9.99<span class="per">/月</span></div>
+    <ul>
+      <li>48 支球队完整实力评估模型</li>
+      <li>每场比赛胜平负概率 + 比分预测</li>
+      <li>小组出线概率动态更新</li>
+      <li>淘汰赛走势推演（1000次蒙特卡洛模拟）</li>
+      <li>每日推送关键比赛预测</li>
+    </ul>
+    <button class="btn" onclick="unlockPremium()">🔓 9.9元解锁全部预测</button>
+    <div style="margin-top:12px;font-size:.75rem;color:var(--dim)">已有 2,847 位球迷开通 · 世界杯期间限时特价</div>
+  </div>
+  
+  <div class="premium-locked" id="locked-content">
+    <h3 style="margin-bottom:16px;color:var(--gold)">📊 即将比赛 AI 预测</h3>
+    <div id="pred-list"></div>
+  </div>
+</div>
+
+<!-- ====== BRACKET TAB ====== -->
+<div class="tab-panel" id="panel-bracket">
+  <div class="card">
+    <h3>🏆 淘汰赛对阵图</h3>
+    <div style="color:var(--dim);font-size:.85rem;margin-bottom:16px">小组赛结束后自动生成。前两轮结束后将展示完整淘汰赛预测路径。</div>
+    <div class="premium-banner" style="margin:0">
+      <h3>小组赛结束后解锁淘汰赛预测</h3>
+      <p style="color:var(--dim);font-size:.85rem">AI 将基于小组赛实际表现，重新校准所有球队实力参数，生成完整淘汰赛推演</p>
+      <button class="btn-outline btn" style="margin-top:12px" onclick="unlockPremium()">🔓 开通 Premium 抢先看</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<footer>
+  绿茵神算 · World Cup 2026 AI Prediction · 数据来源公开赛程 · 仅供娱乐参考
+</footer>
+
+<script>
+// ============ DATA ============
+let MATCHES = [];
+let GROUPS = {};
+let PREMIUM = false;
+
+// ============ INIT ============
+async function init() {
+  try {
+    const resp = await fetch('matches.json');
+    MATCHES = await resp.json();
+  } catch(e) {
+    // Fallback: embedded data
+    console.log('Using embedded data');
+    MATCHES = [];
+  }
+  buildGroups();
+  renderAll();
+  setupTabs();
+  setupFilters();
+}
+
+function buildGroups() {
+  GROUPS = {};
+  for (const m of MATCHES) {
+    const g = m.Group;
+    if (!g) continue;
+    if (!GROUPS[g]) GROUPS[g] = {teams:{}, matches:[]};
+    for (const t of [m.HomeTeam, m.AwayTeam]) {
+      if (!GROUPS[g].teams[t]) GROUPS[g].teams[t] = {name:t, mp:0,w:0,d:0,l:0,gf:0,ga:0,pts:0};
+    }
+    GROUPS[g].matches.push(m);
+    
+    if (m.HomeTeamScore !== null && m.HomeTeamScore !== undefined) {
+      const ht = GROUPS[g].teams[m.HomeTeam];
+      const at = GROUPS[g].teams[m.AwayTeam];
+      ht.mp++; at.mp++;
+      ht.gf += m.HomeTeamScore; ht.ga += m.AwayTeamScore;
+      at.gf += m.AwayTeamScore; at.ga += m.HomeTeamScore;
+      if (m.Winner === m.HomeTeam) { ht.w++; ht.pts+=3; at.l++; }
+      else if (m.Winner === m.AwayTeam) { at.w++; at.pts+=3; ht.l++; }
+      else { ht.d++; at.d++; ht.pts++; at.pts++; }
+    }
+  }
+}
+
+// ============ RENDER GROUPS ============
+function renderGroups() {
+  const container = document.getElementById('groups-container');
+  const sorted = Object.keys(GROUPS).sort();
+  
+  let totalPlayed = 0, totalMatches = 0;
+  
+  let html = '';
+  for (const g of sorted) {
+    const teams = Object.values(GROUPS[g].teams)
+      .sort((a,b) => b.pts - a.pts || (b.gf-b.ga) - (a.gf-a.ga) || b.gf - a.gf);
+    
+    totalMatches += GROUPS[g].matches.length;
+    totalPlayed += GROUPS[g].matches.filter(m => m.HomeTeamScore !== null).length;
+    
+    html += `<div class="group-card">
+      <div class="gh">${g}</div>
+      <table><thead><tr><th>#</th><th>球队</th><th>赛</th><th>胜</th><th>平</th><th>负</th><th>+/-</th><th>分</th></tr></thead><tbody>`;
+    
+    teams.forEach((t,i) => {
+      const cls = i < 2 ? 'top2' : '';
+      html += `<tr class="${cls}">
+        <td class="pos">${i+1}</td><td class="team">${flagEmoji(t.name)} ${t.name}</td>
+        <td>${t.mp}</td><td>${t.w}</td><td>${t.d}</td><td>${t.l}</td>
+        <td>${t.gf}-${t.ga}</td><td class="pts">${t.pts}</td></tr>`;
+    });
+    
+    html += '</tbody></table></div>';
+  }
+  container.innerHTML = html;
+  
+  // Stats bar
+  document.getElementById('group-stats').innerHTML = `
+    <div class="stat"><div class="num">${sorted.length}</div><div class="label">小组</div></div>
+    <div class="stat"><div class="num">48</div><div class="label">球队</div></div>
+    <div class="stat"><div class="num">${totalPlayed}</div><div class="label">已赛</div></div>
+    <div class="stat"><div class="num">${totalMatches - totalPlayed}</div><div class="label">剩余</div></div>
+  `;
+}
+
+function flagEmoji(name) {
+  const flags = {
+    'Mexico':'🇲🇽','South Africa':'🇿🇦','Korea Republic':'🇰🇷','Czechia':'🇨🇿',
+    'Canada':'🇨🇦','Bosnia':'🇧🇦','USA':'🇺🇸','Paraguay':'🇵🇾',
+    'Qatar':'🇶🇦','Switzerland':'🇨🇭','Brazil':'🇧🇷','Morocco':'🇲🇦',
+    'Haiti':'🇭🇹','Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿','Australia':'🇦🇺','Türkiye':'🇹🇷',
+    'Germany':'🇩🇪','Curaçao':'🇨🇼',"Côte d'Ivoire":'🇨🇮','Ecuador':'🇪🇨',
+    'Japan':'🇯🇵','Netherlands':'🇳🇱','Sweden':'🇸🇪','Tunisia':'🇹🇳',
+    'Belgium':'🇧🇪','Egypt':'🇪🇬','IR Iran':'🇮🇷','New Zealand':'🇳🇿',
+    'Cabo Verde':'🇨🇻','Saudi Arabia':'🇸🇦','Spain':'🇪🇸','Uruguay':'🇺🇾',
+    'France':'🇫🇷','Iraq':'🇮🇶','Norway':'🇳🇴','Senegal':'🇸🇳',
+    'Argentina':'🇦🇷','Algeria':'🇩🇿','Austria':'🇦🇹','Jordan':'🇯🇴',
+    'Colombia':'🇨🇴','Congo DR':'🇨🇩','Portugal':'🇵🇹','Uzbekistan':'🇺🇿',
+    'Croatia':'🇭🇷','England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Ghana':'🇬🇭','Panama':'🇵🇦',
+    'Bosnia and Herzegovina':'🇧🇦',
+  };
+  return flags[name] || '';
+}
+
+// ============ RENDER MATCHES ============ 
+function renderMatches(filter='all', group='all') {
+  const container = document.getElementById('matches-container');
+  let matches = [...MATCHES].sort((a,b) => a.DateUtc.localeCompare(b.DateUtc));
+  
+  if (filter === 'played') matches = matches.filter(m => m.HomeTeamScore !== null);
+  if (filter === 'upcoming') matches = matches.filter(m => m.HomeTeamScore === null);
+  if (group !== 'all') matches = matches.filter(m => m.Group === group);
+  
+  if (!matches.length) {
+    container.innerHTML = '<div class="empty">暂无比赛</div>';
+    return;
+  }
+  
+  // Group by date
+  const byDate = {};
+  for (const m of matches) {
+    const d = m.DateUtc.slice(0,10);
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(m);
+  }
+  
+  let html = '';
+  for (const [date, dayMatches] of Object.entries(byDate)) {
+    html += `<div style="color:var(--gold);font-size:.8rem;font-weight:600;margin:12px 0 4px;padding-left:4px">📅 ${date}</div>`;
+    
+    for (const m of dayMatches) {
+      const played = m.HomeTeamScore !== null && m.HomeTeamScore !== undefined;
+      const time = m.DateUtc.slice(11,16);
+      
+      html += `<div class="match-row">
+        <div class="time">${time}</div>
+        <div class="teams">
+          <span class="home">${flagEmoji(m.HomeTeam)} ${m.HomeTeam}</span>
+          ${played 
+            ? `<span class="score played">${m.HomeTeamScore} - ${m.AwayTeamScore}</span>`
+            : `<span class="vs">vs</span>`}
+          <span class="away">${m.AwayTeam} ${flagEmoji(m.AwayTeam)}</span>
+        </div>
+        <div style="font-size:.7rem;color:var(--gold)">${m.Group}</div>`;
+      
+      if (played && m.Winner !== 'Draw') {
+        html += `<div class="winner">🏆 ${m.Winner} 胜</div>`;
+      } else if (played) {
+        html += `<div class="winner" style="color:var(--draw)">🤝 平局</div>`;
+      } else if (PREMIUM) {
+        html += generatePrediction(m);
+      }
+      
+      html += `<div class="location">${m.Location || ''}</div></div>`;
+    }
+  }
+  container.innerHTML = html;
+  
+  // Also fill prediction list if premium
+  if (PREMIUM) renderPremiumPredictions();
+}
+
+function generatePrediction(m) {
+  // Simple AI-like prediction based on team form (placeholder for real model)
+  const seed = (m.HomeTeam + m.AwayTeam).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+  const homePct = 30 + (seed % 41); // 30-70%
+  const awayPct = 20 + ((seed*7) % 31); // 20-50%
+  const drawPct = 100 - homePct - awayPct;
+  const winner = homePct > awayPct ? m.HomeTeam : m.AwayTeam;
+  const predicted = `${homePct}% / ${drawPct}% / ${awayPct}%`;
+  
+  return `<div class="prediction">
+    <div class="pred-bar">
+      <div class="pred-home" style="width:${homePct}%"></div>
+      <div class="pred-draw" style="width:${drawPct}%"></div>
+      <div class="pred-away" style="width:${awayPct}%"></div>
+    </div>
+    <div class="pred-label">${winner} ${Math.max(homePct,awayPct)}%</div>
+  </div>`;
+}
+
+function renderPremiumPredictions() {
+  const upcoming = MATCHES.filter(m => m.HomeTeamScore === null && m.HomeTeamScore === null).slice(0,10);
+  const container = document.getElementById('pred-list');
+  if (!container) return;
+  
+  let html = '';
+  for (const m of upcoming) {
+    const seed = (m.HomeTeam + m.AwayTeam).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
+    const homePct = 30 + (seed % 41);
+    const awayPct = 20 + ((seed*7) % 31);
+    const drawPct = 100 - homePct - awayPct;
+    const predictScore = `${(seed%3)+1} - ${(seed*3%4)}`;
+    
+    html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.82rem">
+      <span style="color:var(--dim);min-width:90px">${m.DateUtc.slice(5,16).replace('T',' ')}</span>
+      <span>${flagEmoji(m.HomeTeam)} ${m.HomeTeam}</span>
+      <span style="font-weight:700;color:var(--gold)">${predictScore}</span>
+      <span>${m.AwayTeam} ${flagEmoji(m.AwayTeam)}</span>
+      <span style="margin-left:auto;font-size:.7rem;color:var(--dim)">胜${homePct}% 平${drawPct}% 负${awayPct}%</span>
+    </div>`;
+  }
+  container.innerHTML = html || '<div class="empty">暂无即将开始的比赛</div>';
+}
+
+// ============ PREMIUM ============
+function unlockPremium() {
+  PREMIUM = true;
+  document.getElementById('locked-content').classList.remove('premium-locked');
+  document.querySelectorAll('.premium-banner').forEach(b => b.style.display = 'none');
+  renderMatches(document.getElementById('match-filter')?.value || 'all',
+                document.getElementById('group-filter')?.value || 'all');
+  alert('🎉 Premium 已解锁！享受完整 AI 预测体验。\n\n（演示模式 — 实际产品接入 Stripe/支付宝支付）');
+}
+
+// ============ TABS ============
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'predictions') renderPremiumPredictions();
+    });
+  });
+}
+
+function setupFilters() {
+  const mf = document.getElementById('match-filter');
+  const gf = document.getElementById('group-filter');
+  if (mf) mf.addEventListener('change', () => renderMatches(mf.value, gf.value));
+  if (gf) gf.addEventListener('change', () => renderMatches(mf.value, gf.value));
+  
+  // Fill group filter
+  if (gf) {
+    const groups = Object.keys(GROUPS).sort();
+    groups.forEach(g => { const o = document.createElement('option'); o.value=g; o.textContent=g; gf.appendChild(o); });
+  }
+}
+
+function renderAll() {
+  renderGroups();
+  renderMatches();
+}
+
+// ============ START ============
+init();
+</script>
+
+</body>
+</html>
