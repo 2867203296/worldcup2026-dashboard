@@ -532,17 +532,10 @@ function payWithAlipay() {
   document.getElementById('pm-step1').style.display = 'none';
   document.getElementById('pm-step2').style.display = 'block';
   document.getElementById('pm-qr-label').textContent = '支付宝扫码支付 ¥' + PRICE;
-  // Simulate payment completion after 3 seconds for demo
-  setTimeout(() => {
-    if (PAYMENT_STEP === 2) {
-      document.getElementById('pm-qr').innerHTML = '✅';
-      document.getElementById('pm-qr-label').textContent = '支付成功！';
-      setTimeout(() => {
-        document.getElementById('pm-step2').style.display = 'none';
-        document.getElementById('pm-done').style.display = 'block';
-      }, 800);
-    }
-  }, 3000);
+  document.getElementById('pm-qr').innerHTML = '<img src="alipay-qr.jpg" style="width:180px;height:180px;object-fit:contain;border-radius:8px" alt="支付宝收款码">';
+  document.getElementById('pm-qr').style.background = '#fff';
+  document.getElementById('pm-qr').style.display = 'flex';
+  document.getElementById('pm-qr-label').style.display = 'block';
   PAYMENT_STEP = 2;
 }
 
@@ -550,16 +543,10 @@ function payWithWechat() {
   document.getElementById('pm-step1').style.display = 'none';
   document.getElementById('pm-step2').style.display = 'block';
   document.getElementById('pm-qr-label').textContent = '微信扫码支付 ¥' + PRICE;
-  setTimeout(() => {
-    if (PAYMENT_STEP === 2) {
-      document.getElementById('pm-qr').innerHTML = '✅';
-      document.getElementById('pm-qr-label').textContent = '支付成功！';
-      setTimeout(() => {
-        document.getElementById('pm-step2').style.display = 'none';
-        document.getElementById('pm-done').style.display = 'block';
-      }, 800);
-    }
-  }, 3000);
+  document.getElementById('pm-qr').innerHTML = '<img src="wechat-qr.png" style="width:180px;height:180px;object-fit:contain;border-radius:8px" alt="微信收款码">';
+  document.getElementById('pm-qr').style.background = '#fff';
+  document.getElementById('pm-qr').style.display = 'flex';
+  document.getElementById('pm-qr-label').style.display = 'block';
   PAYMENT_STEP = 2;
 }
 
