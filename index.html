@@ -357,46 +357,97 @@ function renderMatches(filter='all', group='all') {
 }
 
 function generatePrediction(m) {
-  // Simple AI-like prediction based on team form (placeholder for real model)
-  const seed = (m.HomeTeam + m.AwayTeam).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
-  const homePct = 30 + (seed % 41); // 30-70%
-  const awayPct = 20 + ((seed*7) % 31); // 20-50%
-  const drawPct = 100 - homePct - awayPct;
-  const winner = homePct > awayPct ? m.HomeTeam : m.AwayTeam;
-  const predicted = `${homePct}% / ${drawPct}% / ${awayPct}%`;
+  // Elo-based AI prediction engine
+  const pred = eloPredict(m.HomeTeam, m.AwayTeam);
   
-  return `<div class="prediction">
+  return `<div class="prediction" title="Elo: ${pred.homeElo} vs ${pred.awayElo}">
     <div class="pred-bar">
-      <div class="pred-home" style="width:${homePct}%"></div>
-      <div class="pred-draw" style="width:${drawPct}%"></div>
-      <div class="pred-away" style="width:${awayPct}%"></div>
+      <div class="pred-home" style="width:${pred.homeWin}%"></div>
+      <div class="pred-draw" style="width:${pred.draw}%"></div>
+      <div class="pred-away" style="width:${pred.awayWin}%"></div>
     </div>
-    <div class="pred-label">${winner} ${Math.max(homePct,awayPct)}%</div>
+    <div class="pred-label">${pred.pick} ${Math.max(pred.homeWin,pred.awayWin)}%</div>
   </div>`;
 }
 
 function renderPremiumPredictions() {
-  const upcoming = MATCHES.filter(m => m.HomeTeamScore === null && m.HomeTeamScore === null).slice(0,10);
+  const upcoming = MATCHES.filter(m => m.HomeTeamScore === null).slice(0,15);
   const container = document.getElementById('pred-list');
   if (!container) return;
   
-  let html = '';
+  let html = '<div style="display:grid;gap:10px">';
   for (const m of upcoming) {
-    const seed = (m.HomeTeam + m.AwayTeam).split('').reduce((a,c)=>a+c.charCodeAt(0),0);
-    const homePct = 30 + (seed % 41);
-    const awayPct = 20 + ((seed*7) % 31);
-    const drawPct = 100 - homePct - awayPct;
-    const predictScore = `${(seed%3)+1} - ${(seed*3%4)}`;
+    const pred = eloPredict(m.HomeTeam, m.AwayTeam);
+    const confidence = Math.max(pred.homeWin, pred.awayWin);
+    const confLabel = confidence > 65 ? '🔥高置信' : confidence > 55 ? '⚠️中等' : '💭低置信';
+    const confColor = confidence > 65 ? 'var(--green)' : confidence > 55 ? 'var(--draw)' : 'var(--dim)';
     
-    html += `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);font-size:.82rem">
-      <span style="color:var(--dim);min-width:90px">${m.DateUtc.slice(5,16).replace('T',' ')}</span>
-      <span>${flagEmoji(m.HomeTeam)} ${m.HomeTeam}</span>
-      <span style="font-weight:700;color:var(--gold)">${predictScore}</span>
-      <span>${m.AwayTeam} ${flagEmoji(m.AwayTeam)}</span>
-      <span style="margin-left:auto;font-size:.7rem;color:var(--dim)">胜${homePct}% 平${drawPct}% 负${awayPct}%</span>
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;font-size:.82rem">
+      <span style="color:var(--dim);min-width:85px;font-size:.75rem">${m.DateUtc.slice(5,16).replace('T',' ')}</span>
+      <span style="font-weight:500">${flagEmoji(m.HomeTeam)} ${m.HomeTeam}</span>
+      <span style="font-weight:700;color:var(--gold);min-width:40px;text-align:center">${pred.scorePred}</span>
+      <span style="font-weight:500">${m.AwayTeam} ${flagEmoji(m.AwayTeam)}</span>
+      <span style="margin-left:auto;font-size:.7rem;color:var(--dim)">${m.Group}</span>
+      <span style="font-size:.7rem;color:${confColor};min-width:55px;text-align:right">${confLabel}</span>
+      <div style="width:80px">
+        <div class="pred-bar" style="height:4px">
+          <div class="pred-home" style="width:${pred.homeWin}%"></div>
+          <div class="pred-draw" style="width:${pred.draw}%"></div>
+          <div class="pred-away" style="width:${pred.awayWin}%"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.55rem;color:var(--dim);margin-top:2px">
+          <span>主${pred.homeWin}%</span><span>平${pred.draw}%</span><span>客${pred.awayWin}%</span>
+        </div>
+      </div>
     </div>`;
   }
+  html += '</div>';
   container.innerHTML = html || '<div class="empty">暂无即将开始的比赛</div>';
+}
+
+// ============ ELO PREDICTION ENGINE ============
+const TEAM_ELO = {
+  'Argentina':1920,'France':1900,'Brazil':1895,'England':1880,'Spain':1870,
+  'Germany':1860,'Portugal':1855,'Netherlands':1840,'Belgium':1830,'Croatia':1820,
+  'Uruguay':1800,'Colombia':1795,'Morocco':1790,'USA':1780,'Mexico':1770,
+  'Japan':1765,'Senegal':1750,'IR Iran':1745,'Korea Republic':1740,'Australia':1730,
+  'Egypt':1720,'Switzerland':1715,'Norway':1710,'Austria':1700,'Türkiye':1695,
+  'Ecuador':1690,'Côte d\'Ivoire':1680,'Sweden':1675,'Tunisia':1670,'Serbia':1665,
+  'Scotland':1660,'Qatar':1655,'Saudi Arabia':1650,'Iraq':1640,'Algeria':1635,
+  'Panama':1630,'Paraguay':1625,'South Africa':1620,'Ghana':1615,'Congo DR':1610,
+  'New Zealand':1605,'Cabo Verde':1600,'Czechia':1595,'Jordan':1590,'Haiti':1585,
+  'Bosnia and Herzegovina':1580,'Uzbekistan':1575,'Curaçao':1560,
+  'Canada':1755, // Host nation
+};
+
+function getElo(team) {
+  return TEAM_ELO[team] || 1550;
+}
+
+function eloPredict(home, away) {
+  const homeElo = getElo(home);
+  const awayElo = getElo(away);
+  const HOME_ADV = 100;
+  
+  // Elo expected score
+  const eloDiff = homeElo + HOME_ADV - awayElo;
+  const expHome = 1 / (1 + Math.pow(10, -eloDiff / 400));
+  const expAway = 1 - expHome;
+  
+  // Adjust for draw probability (draws more likely when teams are close)
+  const drawFactor = Math.max(0, 0.35 - Math.abs(eloDiff) / 1200);
+  const homeWin = Math.round((expHome - drawFactor * 0.25) * 100);
+  const awayWin = Math.round((expAway - drawFactor * 0.25) * 100);
+  const draw = Math.round(drawFactor * 100);
+  
+  // Score prediction via expected goals
+  const homeGoals = (homeElo / 400 + 0.5).toFixed(0);
+  const awayGoals = Math.max(0, (awayElo / 400 - 0.3 + (Math.abs(eloDiff) < 50 ? 0.5 : 0))).toFixed(0);
+  const scorePred = `${homeGoals} - ${awayGoals}`;
+  
+  const pick = homeWin > awayWin ? home : away;
+  
+  return { homeWin, awayWin, draw, pick, scorePred, homeElo, awayElo };
 }
 
 // ============ PREMIUM ============
