@@ -500,8 +500,9 @@ function showPaymentModal() {
           <h3 style="color:var(--gold);margin-bottom:10px">📱 扫码支付 ¥${PRICE}</h3>
           <div id="pm-qr" style="width:200px;height:200px;margin:15px auto;background:var(--bg);border:2px solid var(--border);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:3rem">📱</div>
           <div style="color:var(--dim);font-size:.8rem;margin:8px 0" id="pm-qr-label">支付宝扫码</div>
-          <div style="font-size:.75rem;color:var(--dim)">支付完成后自动激活</div>
-          <div style="margin-top:16px">
+          <button class="btn" style="margin:8px 0;background:var(--green)" onclick="paymentDone()">✅ 我已完成支付</button>
+          <div style="font-size:.75rem;color:var(--dim)">或使用激活码</div>
+          <div style="margin-top:8px">
             <input type="text" id="pm-code" placeholder="输入激活码" style="background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 14px;border-radius:6px;font-size:.85rem;width:200px;text-align:center;margin-right:8px">
             <button class="btn btn-small" onclick="verifyCode()">激活</button>
           </div>
@@ -570,6 +571,11 @@ function verifyCode() {
     document.getElementById('pm-error').textContent = '激活码无效，请检查后重试';
     document.getElementById('pm-error').style.display = 'block';
   }
+}
+
+function paymentDone() {
+  document.getElementById('pm-step2').style.display = 'none';
+  document.getElementById('pm-done').style.display = 'block';
 }
 
 function backToStep1() {
